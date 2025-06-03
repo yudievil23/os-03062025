@@ -1,0 +1,2195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechRepair - Sistema de Ordens de Serviço</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #1a1a1a;
+            color: #e6e6e6;
+        }
+        
+        .concrete-bg {
+            background-color: #3a3a3a;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23424242' fill-opacity='0.2'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        .carousel {
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+        }
+        
+        .carousel-item {
+            scroll-snap-align: start;
+            flex: 0 0 auto;
+        }
+        
+        .status-pending {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .status-progress {
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .status-completed {
+            border-left: 4px solid #10b981;
+        }
+        
+        .status-cancelled {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .status-featured {
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        .status-return {
+            border-left: 4px solid #ec4899;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .checklist-item {
+            transition: all 0.2s ease;
+        }
+        
+        .checklist-item:hover {
+            transform: translateX(5px);
+        }
+        
+        /* Photo gallery styles */
+        .photo-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .photo-thumbnail {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .photo-thumbnail:hover {
+            transform: scale(1.05);
+        }
+        
+        .photo-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-thumbnail .delete-photo {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 2;
+        }
+        
+        .photo-thumbnail:hover .delete-photo {
+            opacity: 1;
+        }
+        
+        /* Photo viewer modal */
+        .photo-viewer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .photo-viewer.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .photo-viewer img {
+            max-width: 90%;
+            max-height: 80%;
+            object-fit: contain;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-radius: 5px;
+        }
+        
+        .photo-viewer-controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        .photo-viewer-close {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            background: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .photo-viewer-index {
+            color: white;
+            margin-top: 15px;
+            font-size: 18px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+        
+        /* PDF Modal Styles */
+        #pdfModal {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        #pdfContent {
+            background-color: white;
+            color: #333;
+            width: 210mm;
+            max-width: 100%;
+            height: 297mm;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20mm;
+            box-sizing: border-box;
+        }
+        
+        .pdf-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .pdf-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .pdf-subtitle {
+            font-size: 16px;
+            color: #555;
+        }
+        
+        .pdf-section {
+            margin-bottom: 15px;
+        }
+        
+        .pdf-section-title {
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+        }
+        
+        .pdf-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        
+        .pdf-label {
+            width: 120px;
+            font-weight: bold;
+        }
+        
+        .pdf-value {
+            flex: 1;
+        }
+        
+        .pdf-checklist {
+            margin-left: 20px;
+        }
+        
+        .pdf-checklist-item {
+            margin-bottom: 3px;
+            position: relative;
+            padding-left: 15px;
+        }
+        
+        .pdf-checklist-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+        }
+        
+        .pdf-photos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .pdf-photo {
+            width: 150px;
+            height: 150px;
+            border: 1px solid #ddd;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        .pdf-footer {
+            margin-top: 30px;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .pdf-signature {
+            width: 200px;
+            border-top: 1px solid #333;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        /* Thermal Print Styles */
+        .thermal-receipt {
+            width: 80mm;
+            background: white;
+            color: black;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 5mm;
+            margin: 0 auto;
+            line-height: 1.2;
+        }
+        
+        .thermal-header {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 5px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+        }
+        
+        .thermal-info {
+            margin: 3px 0;
+        }
+        
+        .thermal-divider {
+            border-top: 1px dashed #000;
+            margin: 5px 0;
+        }
+        
+        .thermal-checklist {
+            margin-left: 5px;
+        }
+        
+        .thermal-checklist-item {
+            margin-bottom: 2px;
+        }
+        
+        .thermal-values {
+            margin-top: 5px;
+        }
+        
+        .thermal-footer {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 10px;
+        }
+        
+        /* Print Menu Styles */
+        .print-menu {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .print-menu-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        
+        .print-menu-btn:hover {
+            background: #4b5563;
+        }
+        
+        .print-menu-dropdown {
+            position: absolute;
+            right: 0;
+            top: 50px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            width: 220px;
+            overflow: hidden;
+            display: none;
+            z-index: 100;
+        }
+        
+        .print-menu-dropdown.show {
+            display: block;
+        }
+        
+        .print-menu-item {
+            padding: 10px 15px;
+            color: #333;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .print-menu-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .print-menu-item i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Custom styles for coupon text */
+        .coupon-text {
+            font-size: 16px !important;
+            font-weight: bold !important;
+            line-height: 1.5 !important;
+        }
+        
+        /* Featured badge */
+        .featured-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        /* Return badge */
+        .return-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(135deg, #ec4899, #db2777);
+            color: white;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        /* Order details modal */
+        .order-details-modal {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #f59e0b;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Notification toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #10b981;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast i {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        
+        /* Confirmation modal */
+        .confirmation-modal {
+            background: rgba(0,0,0,0.7);
+        }
+        
+        .confirmation-content {
+            background: #2d3748;
+            border-radius: 10px;
+            padding: 25px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .confirmation-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .photo-gallery {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+            
+            .carousel-item {
+                width: 280px;
+            }
+            
+            .pdf-photo {
+                width: 120px;
+                height: 120px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .photo-gallery {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+            
+            .carousel-item {
+                width: 260px;
+            }
+            
+            .pdf-photo {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .photo-thumbnail {
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-200">
+                    <span class="text-amber-500">CASES</span>STORE
+                </h1>
+                <div class="flex space-x-4">
+                    <button id="newOrderBtn" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center">
+                        <i class="fas fa-plus-circle mr-2"></i> Nova Ordem
+                    </button>
+                    <div class="relative">
+                        <select id="monthFilter" class="bg-gray-800 border border-gray-700 text-gray-200 rounded-lg px-4 py-2 appearance-none pr-8">
+                            <option value="all">Todos os meses</option>
+                            <option value="0">Janeiro</option>
+                            <option value="1">Fevereiro</option>
+                            <option value="2">Março</option>
+                            <option value="3">Abril</option>
+                            <option value="4">Maio</option>
+                            <option value="5">Junho</option>
+                            <option value="6">Julho</option>
+                            <option value="7">Agosto</option>
+                            <option value="8">Setembro</option>
+                            <option value="9">Outubro</option>
+                            <option value="10">Novembro</option>
+                            <option value="11">Dezembro</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Active Orders Panel (Pending and Featured) -->
+        <section class="mb-12">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-300 flex items-center">
+                    <i class="fas fa-tools mr-2 text-amber-500"></i> Ordens Ativas
+                </h2>
+                <div>
+                    <select id="activeOrdersFilter" class="bg-gray-800 border border-gray-700 text-gray-200 rounded-lg px-4 py-2">
+                        <option value="pending">Pendentes</option>
+                        <option value="featured">Destacadas</option>
+                        <option value="return">Retorno</option>
+                        <option value="all">Todas Ativas</option>
+                    </select>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 shadow-lg">
+                <div id="activeOrdersCarousel" class="carousel flex overflow-x-auto space-x-6 pb-4">
+                    <!-- Active orders (pending and featured) will be added here by JavaScript -->
+                    <div id="activeOrdersLoading" class="flex items-center justify-center w-full py-10">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- New Order Modal -->
+        <div id="newOrderModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
+            <div class="bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto concrete-bg shadow-2xl">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-200">Nova Ordem de Serviço</h2>
+                        <button id="closeModalBtn" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="orderForm" class="space-y-6">
+                        <input type="hidden" id="editOrderId">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="clientName" class="block text-gray-300 mb-2">Nome do Cliente</label>
+                                <input type="text" id="clientName" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                            <div>
+                                <label for="whatsapp" class="block text-gray-300 mb-2">Número do WhatsApp</label>
+                                <input type="tel" id="whatsapp" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                        </div>
+                                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label for="deviceType" class="block text-gray-300 mb-2">Tipo do Aparelho</label>
+                                <select id="deviceType" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <option value="Celular">Celular</option>
+                                    <option value="Tablet">Tablet</option>
+                                    <option value="Computador">Computador</option>
+                                    <option value="Notebook">Notebook</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="brand", class="block text-gray-300 mb-2">Marca</label>
+                                <input type="text" id="brand" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                            <div>
+                                <label for="model" class="block text-gray-300 mb-2">Modelo</label>
+                                <input type="text", id="model" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                        </div>
+                                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="imei" class="block text-gray-300 mb-2">IMEI/Serial</label>
+                                <input type="text" id="imei" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                            <div>
+                                <label for="status" class="block text-gray-300 mb-2">Status</label>
+                                <select id="status" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <option value="pending">Está pendente</option>
+                                    <option value="progress">Está em andamento</option>
+                                    <option value="completed">Está concluído</option>
+                                    <option value="cancelled">Está cancelado</option>
+                                    <option value="featured">Está destacado</option>
+                                    <option value="return">Está com retorno</option>
+                                </select>
+                            </div>
+                        </div>
+                                        
+                        <div>
+                            <label for="clientReport" class="block text-gray-300 mb-2">Relato do Cliente</label>
+                            <textarea id="clientReport" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                        </div>
+                                        
+                        <div>
+                            <label for="serviceDescription" class="block text-gray-300 mb-2">O que será feito</label>
+                            <textarea id="serviceDescription" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                        </div>
+                                        
+                        <div>
+                            <label for="replacedPart" class="block text-gray-300 mb-2">Peça trocada</label>
+                            <input type="text" id="replacedPart" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        </div>
+                                        
+                        <!-- Checklist Section -->
+                        <div class="border-t border-gray-700 pt-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-gray-300">Checklist</h3>
+                                <button type="button" id="addChecklistItem" class="text-amber-500 hover:text-amber-400 flex items-center">
+                                    <i class="fas fa-plus-circle mr-1"></i> Adicionar Item
+                                </button>
+                            </div>
+                            
+                            <div id="checklistItems" class="space-y-3">
+                                <div class="checklist-item flex items-center">
+                                    <input type="text" placeholder="Saúde da bateria (ex: 83%)" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <button type="button" class="delete-checklist-item ml-2 text-red-500 hover:text-red-400">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="checklist-item flex items-center">
+                                    <input type="text" placeholder="Câmera frontal OK" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <button type="button" class="delete-checklist-item ml-2 text-red-500 hover:text-red-400">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="checklist-item flex items-center">
+                                    <input type="text" placeholder="Câmera traseira OK" class="flex-1 bg-gray-7 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <button type="button" class="delete-checklist-item ml-2 text-red-500 hover:text-red-400">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                                        
+                        <!-- Values Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-700 pt-6">
+                            <div>
+                                <label for="partValue" class="block text-gray-300 mb-2">Valor da peça trocada</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-gray-400">R$</span>
+                                    <input type="number" id="partValue" class="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="taxValue" class="block text-gray-300 mb-2">Valor de taxa</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-gray-400">R$</span>
+                                    <input type="number" id="taxValue" class="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="totalValue" class="block text-gray-300 mb-2">Valor total</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-gray-400">R$</span>
+                                    <input type="number" id="totalValue" class="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+                            </div>
+                        </div>
+                                        
+                        <!-- Date Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-700 pt-6">
+                            <div>
+                                <label for="entryDay" class="block text-gray-300 mb-2">Dia</label>
+                                <input type="number" id="entryDay" min="1" max="31" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                            <div>
+                                <label for="entryMonth" class="block text-gray-300 mb-2">Mês</label>
+                                <select id="entryMonth" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                    <option value="0">Janeiro</option>
+                                    <option value="1">Fevereiro</option>
+                                    <option value="2">Março</option>
+                                    <option value="3">Abril</option>
+                                    <option value="4">Maio</option>
+                                    <option value="5">Junho</option>
+                                    <option value="6">Julho</option>
+                                    <option value="7">Agosto</option>
+                                    <option value="8">Setembro</option>
+                                    <option value="9">Outubro</option>
+                                    <option value="10">Novembro</option>
+                                    <option value="11">Dezembro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="entryYear" class="block text-gray-300 mb-2">Ano</label>
+                                <input type="number" id="entryYear" min="2000" max="2100" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+                        </div>
+                                        
+                        <!-- Photos Section with unlimited uploads -->
+                        <div class="border-t border-gray-700 pt-6">
+                            <h3 class="text-lg font-semibold text-gray-300 mb-4">Fotos do Aparelho</h3>
+                            <div class="flex flex-wrap gap-4" id="photosPreview">
+                                <!-- Photo previews will appear here -->
+                            </div>
+                            <div class="mt-4">
+                                <label for="photoUpload" class="cursor-pointer inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors">
+                                    <i class="fas fa-camera mr-2"></i> Adicionar Fotos (ilimitado)
+                                    <input type="file" id="photoUpload" class="hidden" accept="image/*" multiple>
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1">Adicione quantas fotos precisar. Fotos são salvas no navegador.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Notes -->
+                        <div>
+                            <label for="additionalNotes" class="block text-gray-300 mb-2">Observações Adicionais</label>
+                            <textarea id="additionalNotes" rows="2" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                        </div>
+                                        
+                        <div class="flex justify-end space-x-4 pt-6 border-t border-gray-700">
+                            <button type="button" id="cancelOrderBtn" class="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors flex items-center">
+                                <i class="fas fa-save mr-2"></i> Salvar Ordem
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Details Modal -->
+        <div id="orderDetailsModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
+            <div class="bg-gray-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto concrete-bg shadow-2xl order-details-modal">
+                <div class="p-6 relative">
+                    <button id="closeDetailsModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                    <div id="orderDetailsContent">
+                        <!-- Order details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Photo Viewer Modal -->
+        <div class="photo-viewer" id="photoViewer">
+            <div class="photo-viewer-close" id="closePhotoViewer">
+                <i class="fas fa-times"></i>
+            </div>
+            <img id="viewedPhoto" src="" alt="">
+            <div class="photo-viewer-index" id="photoIndexDisplay"></div>
+            <div class="photo-viewer-controls">
+                <button id="prevPhoto" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </button>
+                <button id="nextPhoto" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                    Próxima <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Thermal Print Preview Modal -->
+        <div id="thermalModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
+            <div class="bg-white rounded-lg p-4 max-w-full max-h-[90vh] overflow-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Pré-visualização de Impressão</h2>
+                    <button id="closeThermalModalBtn" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="thermalContent" class="thermal-receipt">
+                    <!-- Thermal print content will be generated here -->
+                </div>
+                <div class="mt-4 flex justify-center space-x-4">
+                    <button id="printThermalBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-print mr-2"></i> Imprimir
+                    </button>
+                    <button id="downloadThermalBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-download mr-2"></i> Baixar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PDF Modal -->
+        <div id="pdfModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
+            <div class="relative">
+                <button id="closePdfModalBtn" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center z-50">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div id="pdfContent" class="bg-white mx-auto shadow-xl">
+                    <!-- PDF content will be generated here -->
+                </div>
+                <div class="mt-4 flex justify-center space-x-4">
+                    <button id="downloadPdfBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-download mr-2"></i> Baixar PDF
+                    </button>
+                    <button id="printPdfBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-print mr-2"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden confirmation-modal">
+            <div class="confirmation-content">
+                <i class="fas fa-exclamation-triangle text-3xl text-yellow-500 mb-4"></i>
+                <h3 id="confirmationTitle" class="text-xl font-bold text-gray-200 mb-2">Confirmação</h3>
+                <p id="confirmationMessage" class="text-gray-300">Tem certeza que deseja realizar esta ação?</p>
+                <div class="confirmation-buttons">
+                    <button id="confirmCancelButton" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg">Cancelar</button>
+                    <button id="confirmActionButton" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">Confirmar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div id="toastNotification" class="toast">
+            <i class="fas fa-check-circle"></i>
+            <span id="toastMessage">Operação realizada com sucesso!</span>
+        </div>
+
+        <!-- Orders Catalog (All orders except pending and featured when not filtered) -->
+        <section>
+            <h2 class="text-xl font-semibold text-gray-300 mb-4 flex items-center">
+                <i class="fas fa-clipboard-list mr-2 text-amber-500"></i> Todas as Ordens
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 shadow-lg">
+                <div id="ordersCarousel" class="carousel flex overflow-x-auto space-x-6 pb-4">
+                    <!-- All orders except pending and featured will be added here by JavaScript -->
+                    <div id="ordersLoading" class="flex items-center justify-center w-full py-10">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load orders from localStorage
+            let orders = JSON.parse(localStorage.getItem('techRepairOrders')) || [];
+            
+            // Get or initialize the last order number
+            let lastOrderNumber = parseInt(localStorage.getItem('techRepairLastOrderNumber')) || 0;
+            
+            // Function to generate a new order ID (6-digit number)
+            function generateOrderNumber() {
+                lastOrderNumber++;
+                localStorage.setItem('techRepairLastOrderNumber', lastOrderNumber.toString());
+                return lastOrderNumber.toString().padStart(6, '0');
+            }
+            
+            // Save orders to localStorage
+            function saveOrders() {
+                // Convert dates to ISO strings for storage
+                const ordersToSave = orders.map(order => ({
+                    ...order,
+                    date: order.date.toISOString()
+                }));
+                localStorage.setItem('techRepairOrders', JSON.stringify(ordersToSave));
+                
+                // Show success notification
+                showToast('Ordens salvas com sucesso!');
+            }
+            
+            // Load orders from localStorage
+            function loadOrders() {
+                const savedOrders = localStorage.getItem('techRepairOrders');
+                if (savedOrders) {
+                    orders = JSON.parse(savedOrders).map(order => ({
+                        ...order,
+                        date: new Date(order.date)
+                    }));
+                }
+                
+                const lastNumber = localStorage.getItem('techRepairLastOrderNumber');
+                if (lastNumber) {
+                    lastOrderNumber = parseInt(lastNumber);
+                }
+            }
+            
+            // Show notification toast
+            function showToast(message) {
+                const toast = document.getElementById('toastNotification');
+                const toastMessage = document.getElementById('toastMessage');
+                
+                toastMessage.textContent = message;
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+            
+            // Show confirmation modal
+            function showConfirmation(title, message, callback) {
+                const modal = document.getElementById('confirmationModal');
+                const titleElement = document.getElementById('confirmationTitle');
+                const messageElement = document.getElementById('confirmationMessage');
+                const confirmButton = document.getElementById('confirmActionButton');
+                const cancelButton = document.getElementById('confirmCancelButton');
+                
+                titleElement.textContent = title;
+                messageElement.textContent = message;
+                
+                modal.classList.remove('hidden');
+                
+                // Remove previous event listeners
+                confirmButton.replaceWith(confirmButton.cloneNode(true));
+                cancelButton.replaceWith(cancelButton.cloneNode(true));
+                
+                document.getElementById('confirmActionButton').onclick = function() {
+                    modal.classList.add('hidden');
+                    callback();
+                };
+                
+                document.getElementById('confirmCancelButton').onclick = function() {
+                    modal.classList.add('hidden');
+                };
+            }
+            
+            // DOM Elements
+            const newOrderBtn = document.getElementById('newOrderBtn');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const cancelOrderBtn = document.getElementById('cancelOrderBtn');
+            const newOrderModal = document.getElementById('newOrderModal');
+            const orderForm = document.getElementById('orderForm');
+            const monthFilter = document.getElementById('monthFilter');
+            const activeOrdersCarousel = document.getElementById('activeOrdersCarousel');
+            const ordersCarousel = document.getElementById('ordersCarousel');
+            const addChecklistItem = document.getElementById('addChecklistItem');
+            const checklistItems = document.getElementById('checklistItems');
+            const photoUpload = document.getElementById('photoUpload');
+            const photosPreview = document.getElementById('photosPreview');
+            const entryDay = document.getElementById('entryDay');
+            const entryMonth = document.getElementById('entryMonth');
+            const entryYear = document.getElementById('entryYear');
+            const editOrderId = document.getElementById('editOrderId');
+            const pdfModal = document.getElementById('pdfModal');
+            const pdfContent = document.getElementById('pdfContent');
+            const closePdfModalBtn = document.getElementById('closePdfModalBtn');
+            const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+            const printPdfBtn = document.getElementById('printPdfBtn');
+            const thermalModal = document.getElementById('thermalModal');
+            const thermalContent = document.getElementById('thermalContent');
+            const closeThermalModalBtn = document.getElementById('closeThermalModalBtn');
+            const printThermalBtn = document.getElementById('printThermalBtn');
+            const downloadThermalBtn = document.getElementById('downloadThermalBtn');
+            const activeOrdersFilter = document.getElementById('activeOrdersFilter');
+            const orderDetailsModal = document.getElementById('orderDetailsModal');
+            const orderDetailsContent = document.getElementById('orderDetailsContent');
+            const closeDetailsModalBtn = document.getElementById('closeDetailsModalBtn');
+            const photoViewer = document.getElementById('photoViewer');
+            const viewedPhoto = document.getElementById('viewedPhoto');
+            const closePhotoViewer = document.getElementById('closePhotoViewer');
+            const prevPhoto = document.getElementById('prevPhoto');
+            const nextPhoto = document.getElementById('nextPhoto');
+            const photoIndexDisplay = document.getElementById('photoIndexDisplay');
+            const additionalNotes = document.getElementById('additionalNotes');
+            
+            // Set current date as default
+            const today = new Date();
+            entryDay.value = today.getDate();
+            entryMonth.value = today.getMonth();
+            entryYear.value = today.getFullYear();
+            
+            // Modal control
+            newOrderBtn.addEventListener('click', () => {
+                editOrderId.value = '';
+                newOrderModal.classList.remove('hidden');
+                document.getElementById('clientName').focus();
+            });
+            
+            closeModalBtn.addEventListener('click', () => {
+                newOrderModal.classList.add('hidden');
+            });
+            
+            cancelOrderBtn.addEventListener('click', () => {
+                newOrderModal.classList.add('hidden');
+            });
+            
+            // Order Details Modal control
+            closeDetailsModalBtn.addEventListener('click', () => {
+                orderDetailsModal.classList.add('hidden');
+            });
+            
+            // Photo Viewer controls
+            closePhotoViewer.addEventListener('click', () => {
+                photoViewer.classList.remove('active');
+            });
+            
+            // PDF Modal control
+            closePdfModalBtn.addEventListener('click', () => {
+                pdfModal.classList.add('hidden');
+            });
+            
+            // Thermal Modal control
+            closeThermalModalBtn.addEventListener('click', () => {
+                thermalModal.classList.add('hidden');
+            });
+            
+            // Add new checklist item
+            addChecklistItem.addEventListener('click', () => {
+                const newItem = document.createElement('div');
+                newItem.className = 'checklist-item flex items-center fade-in';
+                newItem.innerHTML = `
+                    <input type="text" placeholder="Novo item" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <button type="button" class="delete-checklist-item ml-2 text-red-500 hover:text-red-400">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                checklistItems.appendChild(newItem);
+                
+                // Add event to delete button
+                newItem.querySelector('.delete-checklist-item').addEventListener('click', () => {
+                    newItem.remove();
+                });
+                
+                // Focus the new input
+                newItem.querySelector('input').focus();
+            });
+            
+            // Photo upload preview with unlimited photos
+            photoUpload.addEventListener('change', function(e) {
+                Array.from(e.target.files).forEach(file => {
+                    if (!file.type.match('image.*')) {
+                        showToast('Apenas arquivos de imagem são permitidos!');
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        const photoPreview = document.createElement('div');
+                        photoPreview.className = 'photo-thumbnail fade-in';
+                        photoPreview.innerHTML = `
+                            <img src="${event.target.result}" class="w-full h-full object-cover" data-src="${event.target.result}">
+                            <div class="delete-photo">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        `;
+                        photosPreview.appendChild(photoPreview);
+                        
+                        // Add event to view photo
+                        photoPreview.querySelector('img').addEventListener('click', () => {
+                            const photos = Array.from(photosPreview.querySelectorAll('img')).map(img => img.src);
+                            const index = photos.indexOf(event.target.result);
+                            openPhotoViewer(photos, index);
+                        });
+                        
+                        // Add event to delete photo button
+                        photoPreview.querySelector('.delete-photo').addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            photoPreview.remove();
+                            showToast('Foto removida com sucesso!');
+                        });
+                    };
+                    
+                    reader.readAsDataURL(file);
+                });
+                
+                // Reset the file input to allow selecting the same files again
+                this.value = '';
+            });
+            
+            // Photo viewer functionality
+            let currentPhotoIndex = 0;
+            let currentPhotoList = [];
+            
+            function openPhotoViewer(photos, index = 0) {
+                currentPhotoList = photos;
+                currentPhotoIndex = index;
+                viewedPhoto.src = photos[index];
+                photoIndexDisplay.textContent = `${index + 1} / ${photos.length}`;
+                photoViewer.classList.add('active');
+            }
+            
+            prevPhoto.addEventListener('click', () => {
+                if (currentPhotoList.length > 0) {
+                    currentPhotoIndex = (currentPhotoIndex - 1 + currentPhotoList.length) % currentPhotoList.length;
+                    viewedPhoto.src = currentPhotoList[currentPhotoIndex];
+                    photoIndexDisplay.textContent = `${currentPhotoIndex + 1} / ${currentPhotoList.length}`;
+                }
+            });
+            
+            nextPhoto.addEventListener('click', () => {
+                if (currentPhotoList.length > 0) {
+                    currentPhotoIndex = (currentPhotoIndex + 1) % currentPhotoList.length;
+                    viewedPhoto.src = currentPhotoList[currentPhotoIndex];
+                    photoIndexDisplay.textContent = `${currentPhotoIndex + 1} / ${currentPhotoList.length}`;
+                }
+            });
+            
+            // Form submission
+            orderForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get form values
+                const clientName = document.getElementById('clientName').value.trim();
+                if (!clientName) {
+                    showToast('Por favor, informe o nome do cliente!');
+                    return;
+                }
+                
+                const day = parseInt(entryDay.value) || today.getDate();
+                const month = parseInt(entryMonth.value) || today.getMonth();
+                const year = parseInt(entryYear.value) || today.getFullYear();
+                const status = document.getElementById('status').value;
+                
+                // Get all photos from preview
+                const photoPreviews = photosPreview.querySelectorAll('img');
+                const photos = Array.from(photoPreviews).map(img => img.src);
+                
+                // Get all checklist items
+                const checklist = Array.from(checklistItems.querySelectorAll('input')).map(input => input.value.trim()).filter(item => item);
+                
+                // Check if we're editing an existing order
+                if (editOrderId.value) {
+                    // Update existing order
+                    const orderIndex = orders.findIndex(o => o.id == editOrderId.value);
+                    if (orderIndex !== -1) {
+                        const updatedOrder = {
+                            ...orders[orderIndex],
+                            clientName: clientName,
+                            whatsapp: document.getElementById('whatsapp').value.trim(),
+                            deviceType: document.getElementById('deviceType').value,
+                            brand: document.getElementById('brand').value.trim(),
+                            model: document.getElementById('model').value.trim(),
+                            imei: document.getElementById('imei').value.trim(),
+                            clientReport: document.getElementById('clientReport').value.trim(),
+                            serviceDescription: document.getElementById('serviceDescription').value.trim(),
+                            replacedPart: document.getElementById('replacedPart').value.trim(),
+                            status: status,
+                            checklist: checklist,
+                            values: {
+                                part: parseFloat(document.getElementById('partValue').value) || 0,
+                                tax: parseFloat(document.getElementById('taxValue').value) || 0,
+                                total: parseFloat(document.getElementById('totalValue').value) || 0
+                            },
+                            photos: photos,
+                            additionalNotes: additionalNotes.value.trim(),
+                            date: new Date(year, month, day)
+                        };
+                        
+                        // Preserve order number when editing
+                        updatedOrder.orderNumber = orders[orderIndex].orderNumber;
+                        
+                        orders[orderIndex] = updatedOrder;
+                        showToast('Ordem atualizada com sucesso!');
+                    }
+                } else {
+                    // Create new order
+                    const orderData = {
+                        id: generateOrderNumber(),
+                        orderNumber: lastOrderNumber,
+                        clientName: clientName,
+                        whatsapp: document.getElementById('whatsapp').value.trim(),
+                        deviceType: document.getElementById('deviceType').value,
+                        brand: document.getElementById('brand').value.trim(),
+                        model: document.getElementById('model').value.trim(),
+                        imei: document.getElementById('imei').value.trim(),
+                        clientReport: document.getElementById('clientReport').value.trim(),
+                        serviceDescription: document.getElementById('serviceDescription').value.trim(),
+                        replacedPart: document.getElementById('replacedPart').value.trim(),
+                        status: status,
+                        checklist: checklist,
+                        values: {
+                            part: parseFloat(document.getElementById('partValue').value) || 0,
+                            tax: parseFloat(document.getElementById('taxValue').value) || 0,
+                            total: parseFloat(document.getElementById('totalValue').value) || 0
+                        },
+                        photos: photos,
+                        additionalNotes: additionalNotes.value.trim(),
+                        date: new Date(year, month, day)
+                    };
+                    
+                    // Add new order
+                    orders.push(orderData);
+                    showToast(`Ordem ${orderData.id} criada com sucesso!`);
+                }
+                
+                // Save to localStorage
+                saveOrders();
+                
+                // Update UI
+                renderOrders();
+                
+                // Close modal and reset form
+                newOrderModal.classList.add('hidden');
+                orderForm.reset();
+                checklistItems.innerHTML = '';
+                photosPreview.innerHTML = '';
+                editOrderId.value = '';
+                
+                // Reset date to current
+                entryDay.value = today.getDate();
+                entryMonth.value = today.getMonth();
+                entryYear.value = today.getFullYear();
+                
+                // Add default checklist items
+                setTimeout(() => {
+                    ['Saúde da bateria (ex: 83%)', 'Câmera frontal OK', 'Câmera traseira OK'].forEach(item => {
+                        const newItem = document.createElement('div');
+                        newItem.className = 'checklist-item flex items-center fade-in';
+                        newItem.innerHTML = `
+                            <input type="text" value="${item}" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <button type="button" class="delete-checklist-item ml-2 text-red-500 hover:text-red-400">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `;
+                        checklistItems.appendChild(newItem);
+                        
+                        newItem.querySelector('.delete-checklist-item').addEventListener('click', () => {
+                            newItem.remove();
+                        });
+                    });
+                }, 100);
+            });
+            
+            // Filter by month
+            monthFilter.addEventListener('change', function() {
+                renderOrders();
+            });
+            
+            // Filter active orders
+            activeOrdersFilter.addEventListener('change', function() {
+                renderOrders();
+            });
+            
+            // Render orders in carousels
+            function renderOrders() {
+                // Clear carousels and show loading
+                activeOrdersCarousel.innerHTML = '<div id="activeOrdersLoading" class="flex items-center justify-center w-full py-10"><div class="spinner"></div></div>';
+                ordersCarousel.innerHTML = '<div id="ordersLoading" class="flex items-center justify-center w-full py-10"><div class="spinner"></div></div>';
+                
+                // Delay to simulate loading (in a real app, this would be for API calls)
+                setTimeout(() => {
+                    // Filter orders by month if needed
+                    const selectedMonth = monthFilter.value;
+                    let filteredOrders = [...orders];
+                    
+                    if (selectedMonth !== 'all') {
+                        filteredOrders = orders.filter(order => order.date.getMonth() == selectedMonth);
+                    }
+                    
+                    // Get active orders filter
+                    const activeFilter = activeOrdersFilter.value;
+                    
+                    // Separate active orders based on filter
+                    let activeOrders = [];
+                    
+                    if (activeFilter === 'pending') {
+                        activeOrders = filteredOrders.filter(order => order.status === 'pending');
+                    } else if (activeFilter === 'featured') {
+                        activeOrders = filteredOrders.filter(order => order.status === 'featured');
+                    } else if (activeFilter === 'return') {
+                        activeOrders = filteredOrders.filter(order => order.status === 'return');
+                    } else if (activeFilter === 'all') {
+                        activeOrders = filteredOrders.filter(order => 
+                            order.status === 'pending' || 
+                            order.status === 'featured' || 
+                            order.status === 'return'
+                        );
+                    }
+                    
+                    // Render active orders
+                    activeOrdersCarousel.innerHTML = '';
+                    if (activeOrders.length === 0) {
+                        activeOrdersCarousel.innerHTML = '<div class="w-full text-center py-10 text-gray-500">Nenhuma ordem encontrada</div>';
+                    } else {
+                        activeOrders.forEach(order => {
+                            const orderCard = createOrderCard(order);
+                            activeOrdersCarousel.appendChild(orderCard);
+                        });
+                    }
+                    
+                    // Render all other orders in catalog (excluding pending and featured unless we're filtering)
+                    const otherStatuses = ['progress', 'completed', 'cancelled'];
+                    if (activeFilter !== 'all') {
+                        otherStatuses.push('featured', 'return');
+                    }
+                    
+                    if (activeFilter !== 'pending') {
+                        otherStatuses.push('pending');
+                    }
+                    
+                    const otherOrders = filteredOrders.filter(order => 
+                        otherStatuses.includes(order.status)
+                    );
+                    
+                    ordersCarousel.innerHTML = '';
+                    if (otherOrders.length === 0) {
+                        ordersCarousel.innerHTML = '<div class="w-full text-center py-10 text-gray-500">Nenhuma ordem encontrada</div>';
+                    } else {
+                        otherOrders.forEach(order => {
+                            const orderCard = createOrderCard(order);
+                            ordersCarousel.appendChild(orderCard);
+                        });
+                    }
+                }, 300);
+            }
+            
+            // Create order card element
+            function createOrderCard(order) {
+                const statusClass = {
+                    'pending': 'status-pending',
+                    'progress': 'status-progress',
+                    'completed': 'status-completed',
+                    'cancelled': 'status-cancelled',
+                    'featured': 'status-featured',
+                    'return': 'status-return'
+                }[order.status];
+                
+                const statusText = {
+                    'pending': 'Pendente',
+                    'progress': 'Em Andamento',
+                    'completed': 'Concluído',
+                    'cancelled': 'Cancelado',
+                    'featured': 'Destacado',
+                    'return': 'Retorno'
+                }[order.status];
+                
+                const statusColor = {
+                    'pending': 'bg-amber-500',
+                    'progress': 'bg-blue-500',
+                    'completed': 'bg-green-500',
+                    'cancelled': 'bg-red-500',
+                    'featured': 'bg-purple-500',
+                    'return': 'bg-pink-600'
+                }[order.status];
+                
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const orderMonth = monthNames[order.date.getMonth()];
+                const orderDay = order.date.getDate();
+                const orderYear = order.date.getFullYear();
+                
+                const orderCard = document.createElement('div');
+                orderCard.className = `carousel-item w-72 flex-shrink-0 ${statusClass} bg-gray-700 rounded-lg p-4 shadow-md relative hover:bg-gray-600 transition-colors`;
+                orderCard.innerHTML = `
+                    ${order.status === 'featured' ? '<div class="featured-badge">Destaque</div>' : ''}
+                    ${order.status === 'return' ? '<div class="return-badge">Retorno</div>' : ''}
+                                        
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-gray-200 truncate">${order.clientName}</h3>
+                        <span class="text-xs ${statusColor} text-white px-2 py-1 rounded-full">${statusText}</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-1">${order.deviceType} ${order.brand} ${order.model}</p>
+                    <p class="text-xs text-gray-500 mb-1">N° OS: ${order.id}</p>
+                    <p class="text-xs text-gray-500 mb-3">${orderDay} de ${orderMonth} ${orderYear}</p>
+                    
+                    ${order.photos.length > 0 ? `
+                    <div class="photo-gallery mb-3">
+                        ${order.photos.slice(0, 4).map((photo, index) => `
+                            <div class="photo-thumbnail" ${index === 3 && order.photos.length > 4 ? 'style="position:relative;"' : ''}>
+                                <img src="${photo}" class="w-full h-full object-cover">
+                                ${index === 3 && order.photos.length > 4 ? 
+                                    `<div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-xs">
+                                        +${order.photos.length - 4} mais
+                                    </div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    ` : '<div class="h-24 bg-gray-600 rounded-lg mb-3 flex items-center justify-center text-gray-400"><i class="fas fa-camera fa-2x"></i></div>'}
+
+                    <div class="text-sm text-gray-300 mb-2 truncate">
+                        <span class="font-medium">Serviço:</span> ${order.serviceDescription}
+                    </div>
+                    <div class="text-sm text-gray-300 mb-3 truncate">
+                        <span class="font-medium">Peça:</span> ${order.replacedPart || 'Nenhuma'}
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-amber-500 font-medium">R$ ${order.values.total.toFixed(2)}</span>
+                        <div class="flex space-x-2">
+                            <button class="view-order text-yellow-400 hover:text-yellow-300 transition-colors" data-id="${order.id}" title="Visualizar">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="edit-order text-blue-400 hover:text-blue-300 transition-colors" data-id="${order.id}" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="pdf-order text-green-400 hover:text-green-300 transition-colors" data-id="${order.id}" title="Gerar PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </button>
+                            <div class="print-menu">
+                                <button class="print-menu-btn text-purple-400 hover:text-purple-300 transition-colors" data-id="${order.id}" title="Imprimir">
+                                    <i class="fas fa-print"></i>
+                                </button>
+                                <div class="print-menu-dropdown">
+                                    <div class="print-menu-item" data-type="cupom">
+                                        <i class="fas fa-receipt"></i> Cupom de Serviço
+                                    </div>
+                                    <div class="print-menu-item" data-type="nao-fiscal">
+                                        <i class="fas fa-file-invoice"></i> Não Fiscal
+                                    </div>
+                                    <div class="print-menu-item" data-type="termica">
+                                        <i class="fas fa-receipt"></i> Impressão Térmica
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="delete-order text-red-400 hover:text-red-300 transition-colors" data-id="${order.id}" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Add event listeners for the order actions
+                orderCard.querySelector('.view-order')?.addEventListener('click', () => showOrderDetails(order.id));
+                orderCard.querySelector('.edit-order')?.addEventListener('click', () => editOrder(order.id));
+                orderCard.querySelector('.pdf-order')?.addEventListener('click', () => showPdfModal(order.id));
+                orderCard.querySelector('.delete-order')?.addEventListener('click', () => {
+                    showConfirmation(
+                        'Confirmar exclusão',
+                        `Tem certeza que deseja excluir a ordem ${order.id} do cliente ${order.clientName}?`,
+                        () => deleteOrder(order.id)
+                    );
+                });
+                
+                // Add photo click events
+                orderCard.querySelectorAll('.photo-thumbnail').forEach((thumb, index) => {
+                    thumb.addEventListener('click', () => {
+                        openPhotoViewer(order.photos, index % order.photos.length);
+                    });
+                });
+                
+                // Add print menu functionality
+                const printMenuBtn = orderCard.querySelector('.print-menu-btn');
+                const printMenuDropdown = orderCard.querySelector('.print-menu-dropdown');
+                
+                printMenuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Close any open menus first
+                    document.querySelectorAll('.print-menu-dropdown.show').forEach(dropdown => {
+                        if (dropdown !== printMenuDropdown) {
+                            dropdown.classList.remove('show');
+                        }
+                    });
+                    printMenuDropdown.classList.toggle('show');
+                });
+                
+                // Close print menu when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!printMenuBtn.contains(e.target) && !printMenuDropdown.contains(e.target)) {
+                        printMenuDropdown.classList.remove('show');
+                    }
+                });
+                
+                // Print menu items click handlers
+                orderCard.querySelectorAll('.print-menu-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const printType = this.getAttribute('data-type');
+                        generateThermalPrint(order, printType);
+                        printMenuDropdown.classList.remove('show');
+                    });
+                });
+                
+                return orderCard;
+            }
+            
+            // Show order details in modal
+            function showOrderDetails(orderId) {
+                const order = orders.find(o => o.id === orderId);
+                if (!order) return;
+                
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const orderMonth = monthNames[order.date.getMonth()];
+                const orderDay = order.date.getDate();
+                const orderYear = order.date.getFullYear();
+                
+                const statusText = {
+                    'pending': 'Pendente',
+                    'progress': 'Em Andamento',
+                    'completed': 'Concluído',
+                    'cancelled': 'Cancelado',
+                    'featured': 'Destacado',
+                    'return': 'Retorno'
+                }[order.status];
+                
+                const statusColor = {
+                    'pending': 'bg-amber-500',
+                    'progress': 'bg-blue-500',
+                    'completed': 'bg-green-500',
+                    'cancelled': 'bg-red-500',
+                    'featured': 'bg-purple-500',
+                    'return': 'bg-pink-600'
+                }[order.status];
+                
+                orderDetailsContent.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center border-b border-gray-700 pb-4">
+                            <h3 class="text-xl font-bold text-gray-200">Detalhes da Ordem</h3>
+                            <div class="flex items-center">
+                                <span class="text-sm mr-2 text-gray-400">Nº ${order.id}</span>
+                                <span class="text-xs ${statusColor} text-white px-3 py-1 rounded-full">${statusText}</span>
+                            </div>
+                        </div>
+                                            
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-300 mb-2">Informações do Cliente</h4>
+                                <div class="space-y-2">
+                                    <div>
+                                        <span class="text-gray-400">Nome:</span>
+                                        <p class="text-gray-200">${order.clientName}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400">WhatsApp:</span>
+                                        <p class="text-gray-200">${order.whatsapp || 'Não informado'}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400">Data:</span>
+                                        <p class="text-gray-200">${orderDay} de ${orderMonth} de ${orderYear}</p>
+                                    </div>
+                                </div>
+                            </div>
+                                            
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-300 mb-2">Informações do Aparelho</h4>
+                                <div class="space-y-2">
+                                    <div>
+                                        <span class="text-gray-400">Tipo:</span>
+                                        <p class="text-gray-200">${order.deviceType}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400">Marca:</span>
+                                        <p class="text-gray-200">${order.brand}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400">Modelo:</span>
+                                        <p class="text-gray-200">${order.model}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-400">IMEI/Serial:</span>
+                                        <p class="text-gray-200">${order.imei || 'Não informado'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                                            
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-300 mb-2">Relato do Cliente</h4>
+                            <p class="text-gray-300 bg-gray-700 p-3 rounded-lg">${order.clientReport || 'Não informado'}</p>
+                        </div>
+                                            
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-300 mb-2">Serviço Realizado</h4>
+                            <p class="text-gray-300 bg-gray-700 p-3 rounded-lg">${order.serviceDescription || 'Não informado'}</p>
+                        </div>
+                                            
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-300 mb-2">Peça Trocada</h4>
+                            <p class="text-gray-300 bg-gray-700 p-3 rounded-lg">${order.replacedPart || 'Nenhuma'}</p>
+                        </div>
+
+                        ${order.additionalNotes ? `
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-300 mb-2">Observações</h4>
+                            <p class="text-gray-300 bg-gray-700 p-3 rounded-lg">${order.additionalNotes}</p>
+                        </div>
+                        ` : ''}
+                                            
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-300 mb-2">Checklist</h4>
+                            <ul class="space-y-2 bg-gray-700 p-3 rounded-lg">
+                                ${order.checklist.length > 0 ? 
+                                    order.checklist.map(item => `<li class="text-gray-300">✓ ${item}</li>`).join('') : 
+                                    '<li class="text-gray-400">Nenhum item adicionado</li>'}
+                            </ul>
+                        </div>
+                                            
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-300 mb-2">Valores</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-700 p-3 rounded-lg">
+                                <div>
+                                    <span class="text-gray-400">Peça:</span>
+                                    <p class="text-gray-200">R$ ${order.values.part.toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400">Taxa:</span>
+                                    <p class="text-gray-200">R$ ${order.values.tax.toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-400">Total:</span>
+                                    <p class="text-amber-500 font-bold">R$ ${order.values.total.toFixed(2)}</p>
+                                </div>
+                            </div>
+                        </div>
+                                            
+                        ${order.photos.length > 0 ? `
+                        <div>
+                            <h4 class="text-lg font-semibold text-gray-300 mb-2">Fotos do Aparelho (${order.photos.length})</h4>
+                            <div class="photo-gallery">
+                                ${order.photos.map((photo, index) => `
+                                    <div class="photo-thumbnail">
+                                        <img src="${photo}" class="w-full h-full object-cover">
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                // Add photo click events in details modal
+                orderDetailsContent.querySelectorAll('.photo-thumbnail').forEach((thumb, index) => {
+                    thumb.addEventListener('click', () => {
+                        openPhotoViewer(order.photos, index);
+                    });
+                });
+                
+                // Show modal
+                orderDetailsModal.classList.remove('hidden');
+            }
+            
+            // Show PDF modal with order details
+            function showPdfModal(orderId) {
+                const order = orders.find(o => o.id === orderId);
+                if (!order) return;
+                
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const orderMonth = monthNames[order.date.getMonth()];
+                const orderDay = order.date.getDate();
+                const orderYear = order.date.getFullYear();
+                
+                // Generate PDF content
+                pdfContent.innerHTML = `
+                    <div class="pdf-header">
+                        <div class="pdf-title">ORDEM DE SERVIÇO</div>
+                        <div class="pdf-subtitle">TechRepair - Assistência Técnica Especializada</div>
+                        <div>Número: ${order.id}</div>
+                    </div>
+                                        
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">DADOS DO CLIENTE</div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Nome:</div>
+                            <div class="pdf-value">${order.clientName}</div>
+                        </div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Telefone:</div>
+                            <div class="pdf-value">${order.whatsapp || 'Não informado'}</div>
+                        </div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Data:</div>
+                            <div class="pdf-value">${orderDay} de ${orderMonth} de ${orderYear}</div>
+                        </div>
+                    </div>
+                                        
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">DADOS DO APARELHO</div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Tipo:</div>
+                            <div class="pdf-value">${order.deviceType}</div>
+                        </div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Marca:</div>
+                            <div class="pdf-value">${order.brand}</div>
+                        </div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Modelo:</div>
+                            <div class="pdf-value">${order.model}</div>
+                        </div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">IMEI/Serial:</div>
+                            <div class="pdf-value">${order.imei || 'Não informado'}</div>
+                        </div>
+                    </div>
+                                        
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">RELATO DO CLIENTE</div>
+                        <div class="pdf-value">${order.clientReport || 'Não informado'}</div>
+                    </div>
+                                        
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">SERVIÇO REALIZADO</div>
+                        <div class="pdf-value">${order.serviceDescription || 'Não informado'}</div>
+                    </div>
+                                        
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">PEÇA TROCADA</div>
+                        <div class="pdf-value">${order.replacedPart || 'Nenhuma'}</div>
+                    </div>
+
+                    ${order.additionalNotes ? `
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">OBSERVAÇÕES</div>
+                        <div class="pdf-value">${order.additionalNotes}</div>
+                    </div>
+                    ` : ''}
+                                        
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">CHECKLIST</div>
+                        <div class="pdf-checklist">
+                            ${order.checklist.map(item => `
+                                <div class="pdf-checklist-item">${item}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                                        
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">VALORES</div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Peça:</div>
+                            <div class="pdf-value">R$ ${order.values.part.toFixed(2)}</div>
+                        </div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Taxa:</div>
+                            <div class="pdf-value">R$ ${order.values.tax.toFixed(2)}</div>
+                        </div>
+                        <div class="pdf-row">
+                            <div class="pdf-label">Total:</div>
+                            <div class="pdf-value">R$ ${order.values.total.toFixed(2)}</div>
+                        </div>
+                    </div>
+                                        
+                    ${order.photos.length > 0 ? `
+                    <div class="pdf-section">
+                        <div class="pdf-section-title">FOTOS DO APARELHO (${order.photos.length})</div>
+                        <div class="pdf-photos">
+                            ${order.photos.map(photo => `
+                                <div class="pdf-photo" style="background-image: url('${photo}')"></div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                                        
+                    <div class="pdf-footer">
+                        <div class="pdf-signature">Assinatura do Cliente</div>
+                        <div class="pdf-signature">Assinatura do Técnico</div>
+                    </div>
+                `;
+                
+                // Show PDF modal
+                pdfModal.classList.remove('hidden');
+                
+                // Set up PDF download button
+                downloadPdfBtn.onclick = function() {
+                    generatePdf(order);
+                };
+                
+                // Set up print button
+                printPdfBtn.onclick = function() {
+                    window.print();
+                };
+            }
+            
+            // Generate PDF from order data
+            function generatePdf(order) {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Add logo or header
+                doc.setFontSize(18);
+                doc.setTextColor(40);
+                doc.text('ORDEM DE SERVIÇO', 105, 20, { align: 'center' });
+                doc.setFontSize(12);
+                doc.text('TechRepair - Assistência Técnica Especializada', 105, 27, { align: 'center' });
+                doc.text(`Número: ${order.id}`, 105, 34, { align: 'center' });
+                
+                // Add line separator
+                doc.setDrawColor(100);
+                doc.line(20, 38, 190, 38);
+                
+                // Client data
+                doc.setFontSize(14);
+                doc.text('DADOS DO CLIENTE', 20, 46);
+                doc.setFontSize(12);
+                doc.text(`Nome: ${order.clientName}`, 20, 53);
+                doc.text(`Telefone: ${order.whatsapp || 'Não informado'}`, 20, 60);
+                
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const orderMonth = monthNames[order.date.getMonth()];
+                doc.text(`Data: ${order.date.getDate()} de ${orderMonth} de ${order.date.getFullYear()}`, 20, 67);
+                
+                // Device data
+                doc.setFontSize(14);
+                doc.text('DADOS DO APARELHO', 20, 79);
+                doc.setFontSize(12);
+                doc.text(`Tipo: ${order.deviceType}`, 20, 86);
+                doc.text(`Marca: ${order.brand}`, 20, 93);
+                doc.text(`Modelo: ${order.model}`, 20, 100);
+                doc.text(`IMEI/Serial: ${order.imei || 'Não informado'}`, 20, 107);
+                
+                // Client report
+                doc.setFontSize(14);
+                doc.text('RELATO DO CLIENTE', 20, 119);
+                doc.setFontSize(12);
+                doc.text(order.clientReport || 'Não informado', 20, 126, { maxWidth: 170 });
+                
+                // Service description
+                doc.setFontSize(14);
+                doc.text('SERVIÇO REALIZADO', 20, 146);
+                doc.setFontSize(12);
+                doc.text(order.serviceDescription || 'Não informado', 20, 153, { maxWidth: 170 });
+                
+                // Replaced part
+                doc.setFontSize(14);
+                doc.text('PEÇA TROCADA', 20, 171);
+                doc.setFontSize(12);
+                doc.text(order.replacedPart || 'Nenhuma', 20, 178);
+                
+                // Additional notes if exists
+                if (order.additionalNotes) {
+                    doc.setFontSize(14);
+                    doc.text('OBSERVAÇÕES', 20, 190);
+                    doc.setFontSize(12);
+                    doc.text(order.additionalNotes, 20, 197, { maxWidth: 170 });
+                }
+                
+                // Checklist
+                doc.setFontSize(14);
+                doc.text('CHECKLIST', 20, 213);
+                doc.setFontSize(12);
+                order.checklist.forEach((item, index) => {
+                    doc.text(`✓ ${item}`, 25, 220 + (index * 7));
+                });
+                
+                // Values
+                doc.setFontSize(14);
+                doc.text('VALORES', 20, 240);
+                doc.setFontSize(12);
+                doc.text(`Peça: R$ ${order.values.part.toFixed(2)}`, 20, 247);
+                doc.text(`Taxa: R$ ${order.values.tax.toFixed(2)}`, 20, 254);
+                doc.text(`Total: R$ ${order.values.total.toFixed(2)}`, 20, 261);
+                
+                // Signatures
+                doc.setFontSize(12);
+                doc.text('Assinatura do Cliente', 40, 280);
+                doc.text('Assinatura do Técnico', 140, 280);
+                doc.line(40, 285, 80, 285);
+                doc.line(140, 285, 180, 285);
+                
+                // Photos would be more complex in reality - just show information
+                if (order.photos.length > 0) {
+                    doc.addPage();
+                    doc.setFontSize(14);
+                    doc.text('IMAGENS DO APARELHO', 20, 20);
+                    doc.setFontSize(10);
+                    doc.text(`Anexas ${order.photos.length} fotos do aparelho`, 20, 30);
+                }
+                
+                // Save the PDF
+                doc.save(`Ordem_Servico_${order.id}.pdf`);
+                showToast('PDF gerado com sucesso!');
+            }
+            
+            // Generate thermal print preview
+            function generateThermalPrint(order, type) {
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const orderMonth = monthNames[order.date.getMonth()];
+                const orderDay = order.date.getDate();
+                const orderYear = order.date.getFullYear();
+                
+                let title = "ORDEM DE SERVIÇO";
+                let subtitle = "";
+                
+                // Set title based on print type
+                switch(type) {
+                    case 'cupom':
+                        title = "CUPOM DE SERVIÇO";
+                        break;
+                    case 'nao-fiscal':
+                        title = "CUPOM NÃO FISCAL";
+                        break;
+                    case 'termica':
+                        title = "ORDEM DE SERVIÇO";
+                        subtitle = "Impressão Térmica";
+                        break;
+                }
+                
+                thermalContent.innerHTML = `
+                    <div class="thermal-header">
+                        <div style="font-size: 16px; font-weight: bold;">${title}</div>
+                        ${subtitle ? `<div style="font-size: 14px;">${subtitle}</div>` : ''}
+                        <div style="font-size: 14px;">Nº ${order.id}</div>
+                    </div>
+                                        
+                    <div class="thermal-info coupon-text">
+                        <div><strong>Cliente:</strong> ${order.clientName}</div>
+                        <div><strong>Data:</strong> ${orderDay}/${order.date.getMonth()+1}/${orderYear}</div>
+                    </div>
+                                        
+                    <div class="thermal-divider"></div>
+                                        
+                    <div class="thermal-info coupon-text">
+                        <div><strong>Aparelho:</strong> ${order.deviceType}</div>
+                        <div><strong>Marca:</strong> ${order.brand}</div>
+                        <div><strong>Modelo:</strong> ${order.model}</div>
+                        <div><strong>IMEI/Serial:</strong> ${order.imei || 'Não informado'}</div>
+                    </div>
+                                        
+                    <div class="thermal-divider"></div>
+                                        
+                    <div class="thermal-info coupon-text">
+                        <div><strong>Serviço:</strong></div>
+                        <div>${order.serviceDescription || 'Não informado'}</div>
+                    </div>
+                                        
+                    <div class="thermal-divider"></div>
+                                        
+                    <div class="thermal-info coupon-text">
+                        <div><strong>Peça trocada:</strong></div>
+                        <div>${order.replacedPart || 'Nenhuma'}</div>
+                    </div>
+
+                    ${order.additionalNotes ? `
+                    <div class="thermal-divider"></div>
+                    
+                    <div class="thermal-info coupon-text">
+                        <div><strong>Observações:</strong></div>
+                        <div>${order.additionalNotes}</div>
+                    </div>
+                    ` : ''}
+                                        
+                    <div class="thermal-divider"></div>
+                                        
+                    <div class="thermal-info coupon-text">
+                        <div><strong>Checklist:</strong></div>
+                        <div class="thermal-checklist">
+                            ${order.checklist.map(item => `
+                                <div class="thermal-checklist-item coupon-text">✓ ${item}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                                        
+                    <div class="thermal-divider"></div>
+                                        
+                    <div class="thermal-values coupon-text">
+                        <div><strong>Valor peça:</strong> R$ ${order.values.part.toFixed(2)}</div>
+                        <div><strong>Taxa serviço:</strong> R$ ${order.values.tax.toFixed(2)}</div>
+                        <div><strong>Total:</strong> R$ ${order.values.total.toFixed(2)}</div>
+                    </div>
+                                        
+                    <div class="thermal-divider"></div>
+                                        
+                    <div class="thermal-footer coupon-text">
+                        <div>Assinatura do Cliente</div>
+                        <div>______________________________</div>
+                        <div>TechRepair - Assistência Técnica</div>
+                        <div>${orderDay}/${order.date.getMonth()+1}/${orderYear}</div>
+                    </div>
+                `;
+                
+                // Show thermal modal
+                thermalModal.classList.remove('hidden');
+                
+                // Set up thermal print button
+                printThermalBtn.onclick = function() {
+                    window.print();
+                };
+                
+                // Set up thermal download button
+                downloadThermalBtn.onclick = function() {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: [80, 297] // 80mm width (thermal printer width), dynamic height
+                    });
+                    
+                    // Calculate how many lines we have
+                    const lineCount = order.checklist.length + 20; // base lines + checklist
+                    
+                    // Set thermal paper height dynamically (about 7mm per line)
+                    const docHeight = Math.max(80, lineCount * 7);
+                    
+                    // Add thermal content to PDF
+                    doc.html(thermalContent, {
+                        callback: function(doc) {
+                            doc.save(`OS_${order.id}.pdf`);
+                            showToast('PDF da ordem baixado!');
+                        },
+                        x: 0,
+                        y: 0,
+                        width: 80,
+                        windowWidth: 80
+                    });
+                };
+            }
+            
+            // Edit order
+            function editOrder(id) {
+                const order = orders.find(o => o.id === id);
+                if (!order) return;
+                
+                // Set edit mode
+                editOrderId.value = order.id;
+                
+                // Fill form with order data
+                document.getElementById('clientName').value = order.clientName;
+                document.getElementById('whatsapp').value = order.whatsapp;
+                document.getElementById('deviceType').value = order.deviceType;
+                document.getElementById('brand').value = order.brand;
+                document.getElementById('model').value = order.model;
+                document.getElementById('imei').value = order.imei;
+                document.getElementById('clientReport').value = order.clientReport;
+                document.getElementById('serviceDescription').value = order.serviceDescription;
+                document.getElementById('replacedPart').value = order.replacedPart;
+                document.getElementById('status').value = order.status;
+                
+                // Fill date
+                entryDay.value = order.date.getDate();
+                entryMonth.value = order.date.getMonth();
+                entryYear.value = order.date.getFullYear();
+                
+                // Fill values
+                document.getElementById('partValue').value = order.values.part;
+                document.getElementById('taxValue').value = order.values.tax;
+                document.getElementById('totalValue').value = order.values.total;
+                
+                // Fill additional notes
+                additionalNotes.value = order.additionalNotes || '';
+                
+                // Fill checklist
+                checklistItems.innerHTML = '';
+                order.checklist.forEach(item => {
+                    const newItem = document.createElement('div');
+                    newItem.className = 'checklist-item flex items-center fade-in';
+                    newItem.innerHTML = `
+                        <input type="text" value="${item}" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <button type="button" class="delete-checklist-item ml-2 text-red-500 hover:text-red-400">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    checklistItems.appendChild(newItem);
+                    
+                    // Add event to delete button
+                    newItem.querySelector('.delete-checklist-item').addEventListener('click', () => {
+                        newItem.remove();
+                    });
+                });
+                
+                // Fill photos
+                photosPreview.innerHTML = '';
+                order.photos.forEach(photo => {
+                    const photoPreview = document.createElement('div');
+                    photoPreview.className = 'photo-thumbnail fade-in';
+                    photoPreview.innerHTML = `
+                        <img src="${photo}" class="w-full h-full object-cover" data-src="${photo}">
+                        <div class="delete-photo">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    `;
+                    photosPreview.appendChild(photoPreview);
+                    
+                    // Add event to view photo
+                    photoPreview.querySelector('img').addEventListener('click', () => {
+                        openPhotoViewer([photo], 0);
+                    });
+                    
+                    // Add event to delete photo button
+                    photoPreview.querySelector('.delete-photo').addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        photoPreview.remove();
+                        showToast('Foto removida do preview!');
+                    });
+                });
+                
+                // Add an empty checklist item if none exists
+                if (order.checklist.length === 0) {
+                    const newItem = document.createElement('div');
+                    newItem.className = 'checklist-item flex items-center fade-in';
+                    newItem.innerHTML = `
+                        <input type="text" placeholder="Novo item" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <button type="button" class="delete-checklist-item ml-2 text-red-500 hover:text-red-400">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    checklistItems.appendChild(newItem);
+                    
+                    newItem.querySelector('.delete-checklist-item').addEventListener('click', () => {
+                        newItem.remove();
+                    });
+                }
+                
+                // Open modal
+                newOrderModal.classList.remove('hidden');
+                document.getElementById('clientName').focus();
+                showToast(`Editando ordem ${order.id}...`);
+            }
+            
+            // Delete order
+            function deleteOrder(id) {
+                orders = orders.filter(order => order.id !== id);
+                saveOrders();
+                renderOrders();
+                showToast('Ordem excluída com sucesso!');
+            }
+            
+            // Initial render
+            loadOrders();
+            renderOrders();
+        });
+    </script>
+</body>
+</html>
